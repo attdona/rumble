@@ -1,11 +1,11 @@
-extern crate rumble;
 extern crate rand;
+extern crate rumble;
 
+use rand::{thread_rng, Rng};
+use rumble::api::{Central, Peripheral, UUID};
+use rumble::bluez::manager::Manager;
 use std::thread;
 use std::time::Duration;
-use rand::{Rng, thread_rng};
-use rumble::bluez::manager::Manager;
-use rumble::api::{UUID, Central, Peripheral};
 
 pub fn main() {
     let manager = Manager::new().unwrap();
@@ -28,9 +28,16 @@ pub fn main() {
     thread::sleep(Duration::from_secs(2));
 
     // find the device we're interested in
-    let light = central.peripherals().into_iter()
-        .find(|p| p.properties().local_name.iter()
-            .any(|name| name.contains("LEDBlue"))).unwrap();
+    let light = central
+        .peripherals()
+        .into_iter()
+        .find(|p| {
+            p.properties()
+                .local_name
+                .iter()
+                .any(|name| name.contains("LEDBlue"))
+        })
+        .unwrap();
 
     // connect to the device
     light.connect().unwrap();

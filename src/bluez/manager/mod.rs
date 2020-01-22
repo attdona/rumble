@@ -1,17 +1,17 @@
-use std::slice::Iter;
 use std::iter::Take;
+use std::slice::Iter;
 use std::sync::Mutex;
 
 use libc;
-use libc::{SOCK_RAW, AF_BLUETOOTH};
+use libc::{AF_BLUETOOTH, SOCK_RAW};
 use nix::sys::ioctl::ioctl_param_type;
 use std::mem;
 
-use bluez::util::handle_error;
 use bluez::adapter::{Adapter, ConnectedAdapter};
 use bluez::constants::*;
 use bluez::ioctl;
-use ::Result;
+use bluez::util::handle_error;
+use Result;
 
 #[derive(Debug, Copy)]
 #[repr(C)]
@@ -21,7 +21,9 @@ pub struct HCIDevReq {
 }
 
 impl Clone for HCIDevReq {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl Default for HCIDevReq {
@@ -47,7 +49,9 @@ impl HCIDevListReq {
 }
 
 impl Clone for HCIDevListReq {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl Default for HCIDevListReq {
@@ -62,7 +66,7 @@ impl Default for HCIDevListReq {
 /// This struct is the interface into BlueZ. It can be used to list, manage, and connect to bluetooth
 /// adapters.
 pub struct Manager {
-    ctl_fd: Mutex<i32>
+    ctl_fd: Mutex<i32>,
 }
 
 impl Manager {
@@ -70,7 +74,9 @@ impl Manager {
     /// created by your application.
     pub fn new() -> Result<Manager> {
         let fd = handle_error(unsafe { libc::socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI) })?;
-        Ok(Manager { ctl_fd: Mutex::new(fd) })
+        Ok(Manager {
+            ctl_fd: Mutex::new(fd),
+        })
     }
 
     /// Returns the list of adapters available on the system.

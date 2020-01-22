@@ -1,33 +1,33 @@
-use std::thread;
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
 use libc;
 
-use ::Result;
+use Result;
 
 use bluez::constants::*;
 use bluez::util::handle_error;
 
+use bluez::protocol::att;
+use bluez::protocol::hci::ACLData;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Mutex;
-use bluez::protocol::hci::ACLData;
-use bluez::protocol::att;
 
 use self::StreamMessage::*;
 use api::BDAddr;
-use Error;
 use api::CommandCallback;
+use api::NotificationHandler;
 use api::RequestCallback;
 use bluez::adapter::Adapter;
-use bytes::BytesMut;
 use bytes::BufMut;
-use api::NotificationHandler;
+use bytes::BytesMut;
+use Error;
 
-enum StreamMessage  {
+enum StreamMessage {
     Command(Vec<u8>, Option<CommandCallback>),
     Request(Vec<u8>, Option<RequestCallback>),
     Data(Vec<u8>),
@@ -96,11 +96,19 @@ impl ACLStream {
         acl_stream
     }
 
-    fn write_socket(&self, value: &mut [u8], command: bool,
-                    receiver: &Receiver<StreamMessage>) -> Result<Vec<u8>> {
+    fn write_socket(
+        &self,
+        value: &mut [u8],
+        command: bool,
+        receiver: &Receiver<StreamMessage>,
+    ) -> Result<Vec<u8>> {
         debug!("writing {:?}", value);
         handle_error(unsafe {
-            libc::write(self.fd, value.as_mut_ptr() as *mut libc::c_void, value.len()) as i32
+            libc::write(
+                self.fd,
+                value.as_mut_ptr() as *mut libc::c_void,
+                value.len(),
+            ) as i32
         })?;
 
         let mut skipped = vec![];
@@ -109,8 +117,7 @@ impl ACLStream {
             debug!("waiting for confirmation... {:?}", message);
             if let Data(rec) = message {
                 if rec != value {
-                    skipped.into_iter().for_each(|m|
-                        self.send(m));
+                    skipped.into_iter().for_each(|m| self.send(m));
                     return Ok(rec);
                 } else if command {
                     return Ok(vec![]);
@@ -121,18 +128,20 @@ impl ACLStream {
         }
     }
 
-    fn handle_iteration(&self, msg: &mut StreamMessage,
-                        receiver: &Receiver<StreamMessage>) -> Result<()> {
+    fn handle_iteration(
+        &self,
+        msg: &mut StreamMessage,
+        receiver: &Receiver<StreamMessage>,
+    ) -> Result<()> {
         match *msg {
             Command(ref mut value, ref handler) => {
                 debug!("sending command {:?} to {}", value, self.fd);
 
-                let result = self.write_socket(value, true, receiver)
-                    .map(|_v| ());
+                let result = self.write_socket(value, true, receiver).map(|_v| ());
                 if let &Some(ref f) = handler {
                     f(result);
                 }
-            },
+            }
             Request(ref mut value, ref handler) => {
                 debug!("sending request {:?} to {}", value, self.fd);
 
@@ -140,7 +149,7 @@ impl ACLStream {
                 if let &Some(ref f) = handler {
                     f(result);
                 }
-            },
+            }
             Data(ref value) => {
                 debug!("Received data {:?}", value);
             }
