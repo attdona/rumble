@@ -1,5 +1,7 @@
 use bytes::{BufMut, BytesMut};
-use nom::{le_i8, le_u16, le_u32, le_u64, le_u8, Err, ErrorKind, IResult};
+use nom::error::ErrorKind;
+use nom::number::complete::{le_i8, le_u16, le_u32, le_u64, le_u8};
+use nom::{Err, IResult};
 use num::FromPrimitive;
 
 use api::{AddressType, BDAddr};
@@ -273,7 +275,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LEAdvertisingData {
     Flags(AdvertisingFlags),
     ServiceClassUUID16(u16),
@@ -493,7 +495,7 @@ fn le_advertising_data(i: &[u8]) -> IResult<&[u8], Vec<LEAdvertisingData>> {
     let (i, typ) = try_parse!(i, le_u8);
 
     if len < 1 {
-        return Err(Err::Error(error_position!(i, ErrorKind::Custom(4))));
+        return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
     }
 
     let len = len as usize - 1;
@@ -528,7 +530,7 @@ fn le_advertising_data(i: &[u8]) -> IResult<&[u8], Vec<LEAdvertisingData>> {
         ),
         0x16 => {
             if len < 2 {
-                return Err(Err::Error(error_position!(i, ErrorKind::Custom(4))));
+                return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
             }
 
             try_parse!(
@@ -542,7 +544,7 @@ fn le_advertising_data(i: &[u8]) -> IResult<&[u8], Vec<LEAdvertisingData>> {
         }
         0x20 => {
             if len < 4 {
-                return Err(Err::Error(error_position!(i, ErrorKind::Custom(4))));
+                return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
             }
             try_parse!(
                 i,
@@ -555,7 +557,7 @@ fn le_advertising_data(i: &[u8]) -> IResult<&[u8], Vec<LEAdvertisingData>> {
         }
         0x21 => {
             if len < 16 {
-                return Err(Err::Error(error_position!(i, ErrorKind::Custom(4))));
+                return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
             }
             try_parse!(
                 i,
@@ -577,7 +579,7 @@ fn le_advertising_data(i: &[u8]) -> IResult<&[u8], Vec<LEAdvertisingData>> {
             if len < i.len() {
                 (&i[len as usize..], vec![])
             } else {
-                return Err(Err::Error(error_position!(i, ErrorKind::Custom(4))));
+                return Err(Err::Error(error_position!(i, ErrorKind::LengthValue)));
             }
         }
     };
@@ -744,7 +746,7 @@ fn hci_event_pkt(i: &[u8]) -> IResult<&[u8], Message> {
         DisconnComplete => try_parse!(data, disconnect_complete).1,
         _ => {
             warn!("Unhandled HCIEventPkt subtype {:?}", sub_type);
-            return Err(Err::Error(error_position!(i, ErrorKind::Custom(4))));
+            return Err(Err::Error(error_position!(i, ErrorKind::Not)));
         }
     };
     Ok((i, result))
@@ -801,7 +803,7 @@ fn hci_acldata_pkt(i: &[u8]) -> IResult<&[u8], Message> {
         ),
         x => {
             warn!("unknown flag type: {}", x);
-            return Err(Err::Error(error_position!(i, ErrorKind::Custom(11))));
+            return Err(Err::Error(error_position!(i, ErrorKind::OneOf)));
         }
     };
     Ok((i, message))

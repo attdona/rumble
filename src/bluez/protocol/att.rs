@@ -1,4 +1,5 @@
-use nom::{le_u16, le_u8, IResult};
+use nom::number::complete::{le_u16, le_u8};
+use nom::IResult;
 
 use api::{CharPropFlags, Characteristic, ValueNotification, UUID};
 
@@ -176,9 +177,15 @@ pub fn characteristics(i: &[u8]) -> IResult<&[u8], Result<Vec<Characteristic>, E
             let (i, rec_len) = try_parse!(i, le_u8);
             let num = i.len() / rec_len as usize;
             let b16_uuid = rec_len == 7;
+            /*
             try_parse!(
                 i,
                 map!(count!(apply!(characteristic, b16_uuid), num), |r| Ok(r))
+            )
+            */
+            try_parse!(
+                i,
+                map!(count!(|i| characteristic(i, b16_uuid), num), |r| Ok(r))
             )
         }
         x => {
